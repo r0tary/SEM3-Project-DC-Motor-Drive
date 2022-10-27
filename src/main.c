@@ -15,8 +15,11 @@
 
 
 int main(void){
+  int D_C = 90;
+  int TOP = 256;
   i2c_init();//initialize I2C communication
   PWM_init();//initialize PWM
+  OCR0B = TOP*0.9;
 
   while(1){
 
