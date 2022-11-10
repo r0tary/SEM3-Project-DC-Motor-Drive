@@ -24,27 +24,27 @@ int main(){
 	PORTD|=(1<<PORTD7) | (1<<PORTD4);
 	PORTB|=(1<<PORTB1);
 	TCCR1A|=(1<<WGM01); //Setup for timers, 90% of use you wanna set it like this
-	OCR1A = 0xF9; //Just whatever you want the timer to count to, I set it like this since I stole it, this counts to 1ms with my prescaler. See the lecture for the formula.
+	OCR1A = 0xf9; //Just whatever you want the timer to count to, I set it like this since I stole it, this counts to 1ms with my prescaler. See the lecture for the formula.
 	TIMSK1|=(1<<OCIE0A); //Setup for timer interrupt, this is how you wanna set it up 99% of always.
 	sei(); //Start enable interrupt, this is used last in the interrupt initialization.
-	uint8_t state = 0, flag = 1;
-	uint16_t  RPM = 0;
+	uint8_t state1 = 0, state2 = 0, flag = 1;
+	uint32_t  RPM = 0;
 	while (1)
 	{
-		state = DDD4 + DDD7 + DDB1;
+		state1 = PIND;
 		
-		if (state == 1 && flag == 1)
+		if (state1 != state2 && flag == 1)
 		{
 			TCCR1B|=(1<<CS11) | (1<<CS10); //Start timer with prescaler 64
 			
 			flag = 0;
 			
 		}
-		if (state == 2 && flag==0) 
+		if (state1 != state2 && flag==0) 
 		{
 			TCCR1B|=(0<<CS11) | (0<<CS10); //Stop timer
 			
-			RPM = 0.16667/(ms/60000 + s/60); //Get the RPM
+			RPM = (0.16667/(ms+s*1000))*60000; //Get the RPM
 			
 			ms = 0;
 			s = 0;
@@ -52,7 +52,9 @@ int main(){
 			flag = 1;
 		}
 		
-		printf("RPM: %d \n",RPM);
+		printf("State1: %u \n",ms);
+		
+		state2 = state1;
 	}
 	}
 
