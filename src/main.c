@@ -25,7 +25,7 @@
 #define Button0 0
 #define mask 0b01 
 
-#define BAUDRATE 57600
+#define BAUDRATE 9600
 #define BAUD_PRESCALER ((F_CPU / (BAUDRATE * 16UL))-1)
 
 //function definitions
@@ -60,10 +60,10 @@ int main(void){
   DDRC = 0x00; //input from Potentiometer
   
   DDRB = 0b0000;
-  PORTB  |= (1<<PORTB0) | (1<<PORTB1);
+  PORTB  |= (1<<PORTB0);
   
   DDRD = 0x00;
-  PORTD |= (1<<PORTD7) | (1<<PORTD4); 
+  PORTD |= (1<<PORTD7) | (1<<PORTD4) | (1<<PORTD6); 
 
   while(1){
     print_String("Change D_C = ",0,1);
@@ -122,6 +122,7 @@ void get_RPM(){
   
   print_String("RPM = ",0,3);
   print_int(RPM,6,3);
+  state_2 = state_1;
 }
 
 
