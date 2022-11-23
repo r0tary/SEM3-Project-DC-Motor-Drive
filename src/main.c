@@ -25,29 +25,29 @@
 #define Button0 0
 #define mask 0b01 
 
-#define BAUDRATE 9600
-#define BAUD_PRESCALER ((F_CPU / (BAUDRATE * 16UL))-1)
 
 //function definitions
 int get_DC(uint8_t);
 void get_RPM(void);
 
 //global variable definitions
-uint8_t change_DC = 0, state_1 = 0, state_2 = 0, flag = 0;
+uint8_t  flag = 0;
 uint16_t RPM = 0;
-volatile uint16_t ms = 0, s = 0;
+volatile uint16_t r = 0, us = 0, ms = 0, s = 0;
 short DutyCycle = 0;
 
 int main(void){
+
   //variables
-  short TOP = 255;
+  short TOP = 256;
   
   //Initilization
   i2c_init();//initialize I2C communication
   SSD1306_setup();//Setup for display
   PWM_init();//initialize PWM
     OCR0B = TOP*0.9;//90% duty cycle
-      
+  timer_1_innit();
+
   SSD1306_clear();//Clears display incase of left over characters
   SSD1306_update();//Pushes to the display
   grid_status(ON);//Enables character grids (size 25x4) 
@@ -62,77 +62,71 @@ int main(void){
   DDRB = 0b0000;
   PORTB  |= (1<<PORTB0);
   
-  DDRD = 0x00;
-  PORTD |= (1<<PORTD7) | (1<<PORTD4) | (1<<PORTD6); 
-
   while(1){
-    print_String("Change D_C = ",0,1);
-      print_int(change_DC,14,1);
-    print_String("ADC = ",0,2);
-      print_int(adc_read(PoMeter),7,2);
-    print_String("D_C = ",11,2);
-      print_int(OCR0B,17,2);
-    //printf("State = %d, ADC = %d, D_C = %d\n",State, adc_read(PoMeter), OCR0B);
+    DutyCycle = adc_read(PoMeter);
 
-    state_1 = PIND;
-    get_RPM();
+    if (DutyCycle!=OCR0B){
+      print_String("ADC: ",0,0);
+      print_int(DutyCycle,5,0);
 
-    if (((PINB & (mask<<Button0)) == 0) && (change_DC == 0)){
-      change_DC = 1;
-      print_int(change_DC,14,1);
-      _delay_ms(300);
-      
-      while(1){
-        DutyCycle = adc_read(PoMeter);
-        print_int(adc_read(PoMeter),7,2);
+        if ((DutyCycle<=TOP*0.9) && (DutyCycle>=TOP*0.1)){
+          OCR0B = adc_read(PoMeter);
 
-        if (((PINB & (mask<<Button0)) == 0) && (change_DC == 1)){
-          _delay_ms(300);
-          break;
+          TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
+          TCCR0B |= (1<<CS00); //No prescaler
+          
+          print_String("D_C: ",7,0);
+          print_int(OCR0B,12,0);
+
+          print_String("RPM: ",0,1);
+          SSD1306_update();
         }
-        SSD1306_update();
-      }
-      
-      change_DC = 0;
-      OCR0B = DutyCycle;
     }
-    SSD1306_update();
+
+    get_RPM();
+  }
+  return 0;
+
+}
+
+
+void get_RPM(){
+  if (flag == 0){
+    TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
+
+    RPM = (1/(0.1*us+ms+s*1000))*60000; //Get the RPM
+
+    us = 0;
+    ms = 0;
+    s = 0;
+
+    TCCR1B|= (0 << CS12) | (0 << CS11) | (1 << CS10); //Start timer with prescaler 1
+
+    flag = 1;
+  }
+  print_int(RPM,5,1);
+}
+
+ISR (TIMER1_COMPA_vect){
+	us++;
+
+  if (us >= 10){
+    us = 0;
+    ms++;
+  }
+
+  if (ms >= 1000){
+    ms = 0;
+    s++;
   }
 }
 
-void get_RPM(){
-  if (state_1 != state_2 && flag == 1)
-		{
-			TCCR1B|=(1<<CS11) | (1<<CS10); //Start timer with prescaler 64
-			
-			flag = 0;
-			
-		}
-		if (state_1 != state_2 && flag==0) 
-		{
-			TCCR1B|=(0<<CS11) | (0<<CS10); //Stop timer
-			
-			RPM = (0.16667/(ms+s*1000))*60000; //Get the RPM
-			
-			ms = 0;
-			s = 0;
-			
-			flag = 1;
-		}
+ISR (PCINT2_vect){
+  r++;
   
-  print_String("RPM = ",0,3);
-  print_int(RPM,6,3);
-  state_2 = state_1;
+  if(r == 12){
+    flag = 0;
+    r = 0;
+  }
+
 }
-
-
-ISR (TIMER1_COMPA_vect){
-	ms++;
-	
-	if (ms==1001)
-	{
-		ms=0;
-		s++;
-	}
-}
-
