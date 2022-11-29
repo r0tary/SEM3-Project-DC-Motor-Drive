@@ -15,9 +15,10 @@
 //Included header files
 //#include "usart.h"
 #include "PWM_TIMERS.h"
+//#include "i2cmaster.h"
 #include "SSD1306_x32.h"
 #include "font.h"
-#include "i2cmaster.h"
+
 
 
 //PIN definitions
@@ -136,3 +137,4 @@ ISR (TIMER1_COMPA_vect){
 	}
 }
 
+//bruhh 
