@@ -13,7 +13,6 @@ void PWM_init(void){
     TCCR0B |= (1<<CS00); //No prescaler
 }
 
-
 uint16_t adc_read(uint8_t adc_channel){
     ADMUX &= 0xf0; //clear any previously used channel, but keep internal reference
     ADMUX |= adc_channel; //set the desired channel
