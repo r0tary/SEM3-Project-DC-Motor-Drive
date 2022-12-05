@@ -37,8 +37,8 @@
     #define SSD1306_SETDISPLAYOFFSET     0xD3//Set Display Offset. specifies the mapping of the display start line
     #define SSD1306_SETSTARTLINE         0x40//Set Display Start Line. Sets the Display Start Line register to determine starting address of display RAM
     #define SSD1306_CHARGEPUMP           0x8D//Set Charge Pump, supply voltage to the OLED driver block.
-    #define SSD1306_SEGREMAP             0xA1//Set Segment Re-map. Changes the mapping between the display data column address and the segment driver.
-    #define SSD1306_COMSCANDEC           0xC8//Set COM Output Scan Direction, sets the scan direction.
+    #define SSD1306_SEGREMAP             0xA0//Set Segment Re-map. Changes the mapping between the display data column address and the segment driver.
+    #define SSD1306_COMSCANDEC           0xC0//Set COM Output Scan Direction, sets the scan direction.
     #define SSD1306_SETCOMPINS           0xDA//Set COM Pins Hardware Configuration, sets the COM signals pin configuration to match the OLED panel hardware layout.
     #define SSD1306_SETCONTRAST          0x81//Set contrast
     #define SSD1306_SETPRECHARGE         0xD9//Set Pre-Charge Period, sets the duration of the pre-charge period.
