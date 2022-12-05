@@ -37,13 +37,13 @@ short DutyCycle = 0;
 int main(void){
 
   //variables
-  short TOP = 256;
+  short TOP = 255;
   
   //Initilization
   i2c_init();//initialize I2C communication
   SSD1306_setup();//Setup for display
   PWM_init();//initialize PWM
-    OCR0B = TOP*0.5;//90% duty cycle
+    OCR0B = adc_read(PoMeter);//90% duty cycle
   timer_1_innit();
 
   SSD1306_clear();//Clears display incase of left over characters
@@ -78,17 +78,17 @@ int main(void){
           print_String("   ",14,0);
           print_int(OCR0B,14,0);
 
-          print_String("RPM: ",0,1);
-          print_String("D_C% ",0,2);
-          print_float((OCR0B/256)*100,1,5,2);
+        //  print_String("RPM: ",0,1);
+        //  print_String("D_C% ",0,2);
+        //  print_float((OCR0B/256)*100,1,5,2);
           
         }
-        else if (DutyCycle<=TOP*0.1){
-          TCCR0A |= (0<<COM0B1) | (0<<WGM01) | (0<<WGM00);
-        }
+        //else if (DutyCycle<=TOP*0.1){
+          //TCCR0A |= (0<<COM0B1) | (0<<WGM01) | (0<<WGM00);
+        //}
     }
 
-    get_RPM();
+    //get_RPM();
     SSD1306_update();
   }
   return 0;
