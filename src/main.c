@@ -18,6 +18,7 @@
 #include "SSD1306_x32.h"
 #include "font.h"
 #include "i2cmaster.h"
+#include "pid.h"
 
 //PIN definitions
 #define PoMeter 3
@@ -33,17 +34,18 @@ uint8_t  flag = 0;
 uint16_t RPM = 0;
 volatile uint16_t r = 0, us = 0, ms = 0, s = 0;
 short DutyCycle = 0;
+float desired_speed;
 
 int main(void){
 
   //variables
   short TOP = 255;
-  
+  int potmeter;
   //Initilization
   i2c_init();//initialize I2C communication
   SSD1306_setup();//Setup for display
   PWM_init();//initialize PWM
-    OCR0B = adc_read(PoMeter);//90% duty cycle
+    OCR0B = 0;//duty cycle
   timer_1_innit();
 
   SSD1306_clear();//Clears display incase of left over characters
@@ -59,46 +61,51 @@ int main(void){
   
   DDRB = 0b0000;
   PORTB  |= (1<<PORTB0);
+
+  print_String("ADC: ",0,0);
+  print_String("D_C: ",9,0);
+  print_String("D_RPM: ",0,3);
   
   while(1){
-    DutyCycle = adc_read(PoMeter);
+    potmeter = adc_read(PoMeter);
+    desired_speed = ((float)potmeter / 255.0) * 3605;
+    DutyCycle = pwm((int)(RPM/14.0),(int)desired_speed);
 
     if (DutyCycle!=OCR0B){
-      print_String("ADC: ",0,0);
+
+      if ((DutyCycle<=TOP*0.9) && (DutyCycle >= TOP*0.1)){
+        OCR0B = DutyCycle;
+      }
+      else if(DutyCycle > TOP*0.9){
+        OCR0B = TOP*0.9;
+      }
+      else if(DutyCycle < TOP*0.1){
+        OCR0B = 0;
+      }
+
+      TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
+      TCCR0B |= (1<<CS00); //No prescaler
+      
       print_String("   ",5,0);
-      print_int(DutyCycle,5,0);
+      print_int(potmeter,5,0);
+      
+      print_String("   ",14,0);
+      print_int(OCR0B,14,0);
 
-        if ((DutyCycle<=TOP*0.9) && (DutyCycle>=TOP*0.1)){
-          OCR0B = adc_read(PoMeter);
+      print_String("    ",8,3);
+      print_int(desired_speed,8,3);
 
-          TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
-          TCCR0B |= (1<<CS00); //No prescaler
-          
-          print_String("D_C: ",9,0);
-          print_String("   ",14,0);
-          print_int(OCR0B,14,0);
-
-        //  print_String("RPM: ",0,1);
-        //  print_String("D_C% ",0,2);
-        //  print_float((OCR0B/256)*100,1,5,2);
-          
-        }
-        //else if (DutyCycle<=TOP*0.1){
-          //TCCR0A |= (0<<COM0B1) | (0<<WGM01) | (0<<WGM00);
-        //}
+      SSD1306_update(); 
     }
-
-    //get_RPM();
-    SSD1306_update();
+    get_RPM();
   }
   return 0;
-
 }
 
 
 void get_RPM(){
   if (flag == 0){
-    TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
+    //TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
 
     RPM = (5/(0.1*us+ms+s*1000))*60000; //Get the RPM
 
@@ -110,9 +117,9 @@ void get_RPM(){
 
     flag = 1;
   }
-  print_String("    ",0,3);
-  print_int(ms,0,3);
-  print_String("     ",5,1);
+  //print_String("    ",0,3);
+  //print_int(ms,0,3);
+  print_String("       ",5,1);
   print_int(RPM,5,1);
 }
 
@@ -131,11 +138,10 @@ ISR (TIMER1_COMPA_vect){
 }
 
 ISR (PCINT2_vect){
-  r++;
+  r++;               //1/12 of a rotation
   
   if(r >= 60){
     flag = 0;
     r = 0;
   }
-
 }

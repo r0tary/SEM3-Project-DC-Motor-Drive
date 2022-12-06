@@ -7,7 +7,7 @@
 void PWM_init(void){
     DDRD |= (1<<PD5); //PWM output at OC0B pin (8)
 
-    OCR0B = adc_read(3);
+    //OCR0B = adc_read(3);
 
     TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
     TCCR0B |= (1<<CS00); //No prescaler
@@ -23,15 +23,15 @@ uint16_t adc_read(uint8_t adc_channel){
     while( (ADCSRA & (1<<ADSC)));
 
     //now we have the result, so we return it to the calling function as a 16 bit unsigned int
-    return ADC*0.25;
+    return (int)(0.25*ADC);
 }
 
 void timer_1_innit(){
     TCCR1A = 0;
     TCCR1B = 0;
 
-    PORTD |= (1<<PORTD7) | (1<<PORTD4 | (1<<PORTD6));
-    TCCR1B |= (1<<WGM12);
+    PORTD |= (1<<PORTD7) | (1<<PORTD4) | (1<<PORTD6);
+    TCCR1B |= (1<<WGM12);//clear timer on compare match mode
     OCR1A = 1599;
     TIMSK1 |= (1<<OCIE1A);
 
