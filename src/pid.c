@@ -12,4 +12,4 @@ int pid(int rpm, int setpoint){ //it takes current and target rpm scaled from 0-
     pwm = kp*error;
     return (int)pwm;//this gets added to the current setting
 
-}
+} 
