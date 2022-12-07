@@ -74,17 +74,18 @@ int main(void){
   while(1){
     potmeter = adc_read(PoMeter);
     desired_speed = ((float)potmeter / 255.0) * 3605;
-    DutyCycle = pwm((int)(RPM/14.0),(int)desired_speed);
+    DutyCycle += pid((int)(RPM/14.0),(int)desired_speed); //try to eliminate error
+    if (DutyCycle<0) DutyCycle = 0; //avoid negative duty cycle values
 
-    if (DutyCycle!=OCR0B){
+    if (DutyCycle!=OCR0B){  //update dutycycle in pwm register
 
       if ((DutyCycle<=TOP*0.9) && (DutyCycle >= TOP*0.1)){
         OCR0B = DutyCycle;
       }
-      else if(DutyCycle > TOP*0.9){
+      else if(DutyCycle > TOP*0.9){ //avoiding 100% dutycycle to let bootstrap capacitor charge
         OCR0B = TOP*0.9;
       }
-      else if(DutyCycle < TOP*0.1){
+      else if(DutyCycle < TOP*0.1){//turning off the motor
         OCR0B = 0;
       }
 
