@@ -4,7 +4,10 @@
  * Created: 26.10.2022.
  * Author : Group 3
  */ 
+//bahaaaaa
 #define F_CPU 16000000UL
+
+#define WITH_USART 1
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -13,11 +16,15 @@
 #include <stdio.h>
 
 //Included header files
-//#include "usart.h"
-#include "PWM_TIMERS.h"
+#ifdef WITH_USART
+#include "usart.h"
+#else
 #include "SSD1306_x32.h"
 #include "font.h"
 #include "i2cmaster.h"
+#endif
+
+#include "PWM_TIMERS.h"
 #include "pid.h"
 
 //PIN definitions
@@ -37,21 +44,23 @@ short DutyCycle = 0;
 float desired_speed;
 
 int main(void){
-
+  printf("helloworld\n");
   //variables
   short TOP = 255;
   int potmeter;
   //Initilization
-  i2c_init();//initialize I2C communication
-  SSD1306_setup();//Setup for display
+  //i2c_init();//initialize I2C communication
+  uart_init();
+  io_redirect();
+
   PWM_init();//initialize PWM
     OCR0B = 0;//duty cycle
   timer_1_innit();
-
+/**
   SSD1306_clear();//Clears display incase of left over characters
   SSD1306_update();//Pushes to the display
   grid_status(ON);//Enables character grids (size 25x4) 
-  
+  */
   //For ADC module
   ADMUX  = (1<<REFS0);//Select Vref = AVcc
   ADCSRA = (1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0)|(1<<ADEN); //Set prescaler to 128 and turn on the ADC module
@@ -61,10 +70,6 @@ int main(void){
   
   DDRB = 0b0000;
   PORTB  |= (1<<PORTB0);
-
-  print_String("ADC: ",0,0);
-  print_String("D_C: ",9,0);
-  print_String("D_RPM: ",0,3);
   
   while(1){
     potmeter = adc_read(PoMeter);
@@ -86,18 +91,9 @@ int main(void){
       TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
       TCCR0B |= (1<<CS00); //No prescaler
       
-      print_String("   ",5,0);
-      print_int(potmeter,5,0);
-      
-      print_String("   ",14,0);
-      print_int(OCR0B,14,0);
-
-      print_String("    ",8,3);
-      print_int(desired_speed,8,3);
-
-      SSD1306_update(); 
     }
     get_RPM();
+    printf("%6d,%6d,%6.1f,%6d\n",potmeter,RPM,desired_speed,DutyCycle);
   }
   return 0;
 }
@@ -118,9 +114,7 @@ void get_RPM(){
     flag = 1;
   }
   //print_String("    ",0,3);
-  //print_int(ms,0,3);
-  print_String("       ",5,1);
-  print_int(RPM,5,1);
+  
 }
 
 ISR (TIMER1_COMPA_vect){
