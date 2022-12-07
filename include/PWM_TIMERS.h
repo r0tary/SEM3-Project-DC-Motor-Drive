@@ -5,7 +5,11 @@
 
 void PWM_init(void);
 
+<<<<<<< Updated upstream
 //uint16_t adc_read(uint8_t adc_channel);
+=======
+
+>>>>>>> Stashed changes
 
 void timer_1_innit(void);
 

@@ -63,10 +63,15 @@ int main(void){
     error = potmeter - (RPM/14)*255;
     DutyCycle = (int)(kp * error);
 
+<<<<<<< Updated upstream
     printf("%d, %6d, %6d, %6d, %6d, %6d, %6d\n",PINB,power_on&1, DutyCycle, OCR0B, error, potmeter*14, RPM);
     //OCR0B = 20;
     
     if ((DutyCycle!=OCR0B)){  //update dutycycle in pwm register
+=======
+    printf("%6d, %6d, %6d, %6d, %6d\n",power_on&1, DutyCycle, error, potmeter*14, RPM);
+    if ((DutyCycle!=OCR0B) && (power_on & 1)){  //update dutycycle in pwm register
+>>>>>>> Stashed changes
 
       if ((DutyCycle<=TOP*0.9) && (DutyCycle >= TOP*0.1)){
         OCR0B = DutyCycle;
@@ -82,6 +87,13 @@ int main(void){
       TCCR0B |= (1<<CS00); //No prescaler
       
     }
+<<<<<<< Updated upstream
+=======
+    if(!(power_on&1)){
+      OCR0B = 0;
+    }
+    
+>>>>>>> Stashed changes
 
   }
   //return 0;
