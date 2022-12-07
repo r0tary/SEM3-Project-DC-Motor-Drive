@@ -47,7 +47,7 @@ int main(void){
   printf("helloworld\n");
   //variables
   short TOP = 255;
-  int potmeter;
+  int potmeter, correction = 0, error = 0, PMR = 0;
   //Initilization
   //i2c_init();//initialize I2C communication
   uart_init();
@@ -71,10 +71,20 @@ int main(void){
   DDRB = 0b0000;
   PORTB  |= (1<<PORTB0);
   
+  float kp = 2;
   while(1){
+	 if (PMR != potmeter)
+	 {
     potmeter = adc_read(PoMeter);
-    desired_speed = ((float)potmeter / 255.0) * 3605;
-    DutyCycle += pid((int)(RPM/14.0),(int)desired_speed); //try to eliminate error
+	 } 
+	if ((potmeter<=TOP*0.9) && (potmeter >= TOP*0.1)){
+	OCR0B = potmeter;
+	get_RPM();
+    	desired_speed = potmeter;
+	error = potmeter - RPM/14;
+	correction = error * kp;
+	DutyCycle = potmeter + correction;
+    
     if (DutyCycle<0) DutyCycle = 0; //avoid negative duty cycle values
 
     if (DutyCycle!=OCR0B){  //update dutycycle in pwm register
@@ -93,8 +103,15 @@ int main(void){
       TCCR0B |= (1<<CS00); //No prescaler
       
     }
-    get_RPM();
     printf("%6d,%6d,%6.1f,%6d\n",potmeter,RPM,desired_speed,DutyCycle);
+		}
+	 else if(potmeter > TOP*0.9){ //avoiding 100% dutycycle to let bootstrap capacitor charge
+		 OCR0B = TOP*0.9;
+	 }
+	 else if(potmeter < TOP*0.1){//turning off the motor
+		 OCR0B = 0;
+	 }
+	 PMR = potmeter;
   }
   return 0;
 }
