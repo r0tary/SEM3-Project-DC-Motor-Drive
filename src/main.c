@@ -4,7 +4,6 @@
  * Created: 26.10.2022.
  * Author : Group 3
  */ 
-//bahaaaaa
 #define F_CPU 16000000UL
 
 #include <avr/io.h>
@@ -16,7 +15,6 @@
 //Included header files
 #include "usart.h"
 #include "PWM_TIMERS.h"
-//#include "pid.h"
 
 //PIN definitions
 #define PoMeter 3
@@ -31,7 +29,7 @@ uint16_t adc_read(uint8_t adc_channel);
 //global variable definitions
 uint8_t  flag = 0;
 uint16_t RPM = 0;
-volatile uint16_t r = 0, us = 0, ms = 0, s = 0;
+volatile uint16_t r = 0, us = 0, ms = 0, s = 0, sixthRotationTime=0;
 volatile char power_on=0;
 int DutyCycle = 0;
 
@@ -42,12 +40,12 @@ int main(void){
   int potmeter,error, previousError =0,  deltaT;
   float integral;
   float kp= 0.4, ki = 2.1;
+
   //Initilization
   uart_init();
   io_redirect();
   PWM_init();//initialize PWM
   OCR0B = 0;//duty cycle
-  timer_1_innit();
 
   //For ADC module
   ADMUX  = (1<<REFS0);//Select Vref = AVcc
@@ -57,6 +55,17 @@ int main(void){
   DDRC = 0x00; //input from Potentiometer
   DDRB = 0b00100000;//led_builtin as output
   PORTB  |= (1<<PORTB0);//button pullup
+  PORTD |= (1<<PORTD7) | (1<<PORTD4) | (1<<PORTD6);//hall sensor pullups
+
+  //interrupts
+  PCICR |= (1<<PCIE2)|(1<<PCIE0);//set PCIE2 to enable the group for PCINT17...PCINT23
+  PCMSK2 |= (1<<PCINT20) | (1<<PCINT22) | (1<<PCINT23); //Enable only PCINT20, 22, 23 interrupt from the group.
+  PCMSK0 |= (1<<PCINT0);
+  sei();
+
+  //timer1 init
+  TCCR1B = (1<<CS12)|(1<<CS10);//1024 prescaler >> 15625Hz, 0.000064 sec for a tick, 64us
+
   //timer2 init
   TCCR2B = (1<<CS22)|(1<<CS21)|(1<<CS20);//1024 prescaler, >> 15625 Hz, 64us for a tick
 
@@ -98,22 +107,9 @@ int main(void){
 }
 
 void get_RPM(){
-  if (flag == 0){
-    //TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
-
-    RPM = (5/(0.1*us+ms+s*1000))*60000; //Get the RPM
-
-    us = 0;
-    ms = 0;
-    s = 0;
-
-    TCCR1B|= (0 << CS12) | (0 << CS11) | (1 << CS10); //Start timer with prescaler 1
-
-    flag = 1;
-  }
-  //print_String("    ",0,3);
-  
+  RPM = (int)(1.0/(0.000064 * sixthRotationTime * 6));
 }
+
 uint16_t adc_read(uint8_t adc_channel){
     ADMUX &= 0xf0; //clear any previously used channel, but keep internal reference
     ADMUX |= adc_channel; //set the desired channel
@@ -127,27 +123,9 @@ uint16_t adc_read(uint8_t adc_channel){
     return (int)(0.25*ADC);
 }
 
-ISR (TIMER1_COMPA_vect){
-	us++;
-
-  if (us >= 10){
-    us = 0;
-    ms++;
-  }
-
-  if (ms >= 1000){
-    ms = 0;
-    s++;
-  }
-}
-
 ISR (PCINT2_vect){
-  r++;               //1/12 of a rotation
-  
-  if(r >= 60){
-    flag = 0;
-    r = 0;
-  }
+  sixthRotationTime = TCNT1;
+  TCNT1 = 0;
 }
 /*
 ISR (PCINT0_vect){
