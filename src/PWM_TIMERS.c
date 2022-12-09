@@ -12,7 +12,6 @@ void PWM_init(void){
     TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
     TCCR0B |= (1<<CS00); //No prescaler
 }
-<<<<<<< Updated upstream
  /*
 uint16_t adc_read(uint8_t adc_channel){
     ADMUX &= 0xf0; //clear any previously used channel, but keep internal reference
@@ -26,10 +25,6 @@ uint16_t adc_read(uint8_t adc_channel){
     //now we have the result, so we return it to the calling function as a 16 bit unsigned int
     return (int)(0.25*ADC);
 }*/
-=======
-
-
->>>>>>> Stashed changes
 
 void timer_1_innit(){
     TCCR1A = 0;
@@ -40,15 +35,8 @@ void timer_1_innit(){
     OCR1A = 1599;
     TIMSK1 |= (1<<OCIE1A);
 
-<<<<<<< Updated upstream
     PCICR |= (1<<PCIE2)|(1<<PCIE0);//set PCIE2 to enable the group for PCINT17...PCINT23
     PCMSK2 |= (1<<PCINT20) | (1<<PCINT22) | (1<<PCINT23); //Enable only PCINT20, 22, 23 interrupt from the group.
     PCMSK0 |= (1<<PCINT0);
-=======
-    PCICR |= (1<<PCIE2)|(1<<PCIE0);//set PCIE2 to enable the group for PCINT17...PCINT23, PCIE0 to enable 0-7, interrupt on PB0 (button)
-    PCMSK2 |= (1<<PCINT20) | (1<<PCINT22) | (1<<PCINT23); //Enable only PCINT20, 22, 23 interrupt from the group.
-    PCMSK0 |= (1<<PCINT0);//enable interrupt on button
-    
->>>>>>> Stashed changes
     sei();
 }

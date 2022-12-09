@@ -40,7 +40,7 @@ int main(void){
   //variables
   short TOP = 255;
   int potmeter,error;
-  float kp= 0.1;
+  float kp= 0.2;
   //Initilization
   uart_init();
   io_redirect();
@@ -60,18 +60,13 @@ int main(void){
   while(1){
     potmeter = adc_read(PoMeter);
     get_RPM();
-    error = potmeter - (RPM/14)*255;
+    error = potmeter - (RPM/14);
     DutyCycle = (int)(kp * error);
 
-<<<<<<< Updated upstream
-    printf("%d, %6d, %6d, %6d, %6d, %6d, %6d\n",PINB,power_on&1, DutyCycle, OCR0B, error, potmeter*14, RPM);
-    //OCR0B = 20;
+    //DutyCycle = 30;
+    //OCR0B = 30;
     
     if ((DutyCycle!=OCR0B)){  //update dutycycle in pwm register
-=======
-    printf("%6d, %6d, %6d, %6d, %6d\n",power_on&1, DutyCycle, error, potmeter*14, RPM);
-    if ((DutyCycle!=OCR0B) && (power_on & 1)){  //update dutycycle in pwm register
->>>>>>> Stashed changes
 
       if ((DutyCycle<=TOP*0.9) && (DutyCycle >= TOP*0.1)){
         OCR0B = DutyCycle;
@@ -79,7 +74,7 @@ int main(void){
       else if(DutyCycle > TOP*0.9){ //avoiding 100% dutycycle to let bootstrap capacitor charge
         OCR0B = TOP*0.9;
       }
-      else if(DutyCycle < TOP*0.1){//turning off the motor
+      else if(DutyCycle < 0.1*TOP){//turning off the motor
         OCR0B = 0;
       }
 
@@ -87,13 +82,7 @@ int main(void){
       TCCR0B |= (1<<CS00); //No prescaler
       
     }
-<<<<<<< Updated upstream
-=======
-    if(!(power_on&1)){
-      OCR0B = 0;
-    }
-    
->>>>>>> Stashed changes
+    printf("%6d, %6d, %6d, %6d, %6d\n",DutyCycle, OCR0B, error*14, potmeter*14, RPM);
 
   }
   //return 0;
@@ -152,9 +141,10 @@ ISR (PCINT2_vect){
     r = 0;
   }
 }
+/*
 ISR (PCINT0_vect){
   //switching the last bit of power_on, if more than one second passed since the last switching. The seconds are stored from 7-1 bits, 
   //the state in the last one; also only changes it if the button is released
   if(((PINB&1)==1) && (s!=(power_on>>1))) power_on = (s<<1)| (power_on^1);
 
-}
+}*/
