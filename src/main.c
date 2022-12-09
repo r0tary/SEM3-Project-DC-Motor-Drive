@@ -39,8 +39,9 @@ int main(void){
   
   //variables
   short TOP = 255;
-  int potmeter,error;
-  float kp= 0.2;
+  int potmeter,error, previousError =0,  deltaT;
+  float integral;
+  float kp= 0.4, ki = 2.1;
   //Initilization
   uart_init();
   io_redirect();
@@ -56,13 +57,21 @@ int main(void){
   DDRC = 0x00; //input from Potentiometer
   DDRB = 0b00100000;//led_builtin as output
   PORTB  |= (1<<PORTB0);//button pullup
-  
+  //timer2 init
+  TCCR2B = (1<<CS22)|(1<<CS21)|(1<<CS20);//1024 prescaler, >> 15625 Hz, 64us for a tick
+
+
   while(1){
     potmeter = adc_read(PoMeter);
     get_RPM();
+    previousError = error;
+    deltaT = TCNT2;
+    TCNT2 = 0;
     error = potmeter - (RPM/14);
-    DutyCycle = (int)(kp * error);
-
+    integral += 0.000064*deltaT*(error+previousError)/2;
+    DutyCycle = (int)(kp * error)+(int)ki*integral;
+    if(DutyCycle<0)DutyCycle=0;
+    if(DutyCycle>255)DutyCycle = 255;
     //DutyCycle = 30;
     //OCR0B = 30;
     
@@ -82,12 +91,11 @@ int main(void){
       TCCR0B |= (1<<CS00); //No prescaler
       
     }
-    printf("%6d, %6d, %6d, %6d, %6d\n",DutyCycle, OCR0B, error*14, potmeter*14, RPM);
+    printf("%6d, %6d, %6d, %6d, %6d,%d,%f\n",DutyCycle, OCR0B, error, potmeter, RPM/14,deltaT,integral);
 
   }
   //return 0;
 }
-
 
 void get_RPM(){
   if (flag == 0){
