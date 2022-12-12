@@ -12,7 +12,7 @@ void PWM_init(void){
     TCCR0A |= (1<<COM0B1) | (1<<WGM01) | (1<<WGM00);//Non Inverting Fast PWM
     TCCR0B |= (1<<CS00); //No prescaler
 }
-
+/*
 uint16_t adc_read(uint8_t adc_channel){
     ADMUX &= 0xf0; //clear any previously used channel, but keep internal reference
     ADMUX |= adc_channel; //set the desired channel
@@ -24,7 +24,7 @@ uint16_t adc_read(uint8_t adc_channel){
 
     //now we have the result, so we return it to the calling function as a 16 bit unsigned int
     return (int)(0.25*ADC);
-}
+}*/
 
 void timer_1_innit(){
     TCCR1A = 0;
