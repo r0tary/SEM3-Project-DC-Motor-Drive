@@ -28,9 +28,9 @@ uint16_t adc_read(uint8_t adc_channel);
 
 //global variable definitions
 uint8_t  flag = 0;
-uint16_t RPM = 0;
-volatile uint16_t r = 0, us = 0, ms = 0, s = 0, sixthRotations[6];
-volatile char power_on=0, ptr=0;
+uint16_t RPM = 0, prevRPM = 0;
+volatile uint16_t r = 0, us = 0, ms = 0, s = 0, sixthRotations[6],ptr=0;
+volatile char power_on=0 ;
 int DutyCycle = 0;
 
 int main(void){
@@ -40,13 +40,15 @@ int main(void){
   int potmeter,error, previousError =0,  deltaT;
   float integral;
   float kp= 0.4, ki = 2.1;
-
+  unsigned long long int rotationtime;
   //Initilization
   uart_init();
   io_redirect();
   PWM_init();//initialize PWM
   OCR0B = 0;//duty cycle
-
+  for(int i=0; i<6;i++){
+    sixthRotations[i] = 65500;
+  }
   //For ADC module
   ADMUX  = (1<<REFS0);//Select Vref = AVcc
   ADCSRA = (1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0)|(1<<ADEN); //Set prescaler to 128 and turn on the ADC module
@@ -72,15 +74,41 @@ int main(void){
 
   while(1){
     potmeter = adc_read(PoMeter);
-    get_RPM();
+    //get_RPM();
+
+    rotationtime = 0;
+    for(int i=0; i<6; i++){ //sum up the time for one rotation
+      if (i==ptr){
+        if(!(TIFR1 & (1<<TOV1))){
+          rotationtime +=TCNT1;
+        }
+        else{
+          rotationtime += 65530;
+        }
+      }
+      else{
+      rotationtime += sixthRotations[i];
+      }
+    }
+    
+    RPM = ((int)(60.0/(0.000064 * rotationtime))/2 + prevRPM)/2;//how many times the motor rotates in one minute
     previousError = error;
     deltaT = TCNT2;
     TCNT2 = 0;
     error = potmeter - (RPM/14);
-    integral += 0.000064*deltaT*(error+previousError)/2;
+    if (integral <= TOP){
+      integral += 0.000064*deltaT*(error+previousError)/2;
+    }
+    else{
+      integral = TOP;
+    }
+    
     DutyCycle = (int)(kp * error)+(int)ki*integral;
 
-    if(DutyCycle<0)DutyCycle=0;
+    if(DutyCycle<0){
+      DutyCycle=0;
+      integral = 0;
+    }
     if(DutyCycle>255)DutyCycle = 255;
     
     if ((DutyCycle!=OCR0B)){  //update dutycycle in pwm register
@@ -99,7 +127,9 @@ int main(void){
       TCCR0B |= (1<<CS00); //No prescaler
       
     }
-    printf("%6d, %6d, %6d, %6d, %6d,%d,%f\n",DutyCycle, OCR0B, error, potmeter, RPM/14,deltaT,integral);
+    
+    printf("%6u, %6u, %6d, %6u, %6f, %6.2f\n",DutyCycle,OCR0B,error,potmeter,RPM/1.0,integral);
+    //printf("%6u, %6u, %6u, %6u, %6u, %6u,%6u\n",sixthRotations[0],sixthRotations[1],sixthRotations[2],sixthRotations[3],sixthRotations[4],sixthRotations[5],rotationtime);
 
   }
   //return 0;
@@ -107,7 +137,7 @@ int main(void){
 
 void get_RPM(){
   int rotationtime;
-  for(int i; i<6; i++){ //sum up the time for one rotation
+  for(int i=0; i<6; i++){ //sum up the time for one rotation
     rotationtime += sixthRotations[i];
   }
   RPM = (int)(60.0/(0.000064 * rotationtime));//how many times the motor rotates in one minute
@@ -128,9 +158,15 @@ uint16_t adc_read(uint8_t adc_channel){
 
 //sum up the time it takes for one rotation
 ISR (PCINT2_vect){
-  sixthRotations[ptr++] = TCNT1;
+  if(TIFR1 & (1<<TOV1)){
+    sixthRotations[ptr++] = 65530;
+  }
+  else{
+    sixthRotations[ptr++] = TCNT1;
+  }
   if(ptr==6)ptr=0;
   TCNT1 = 0;
+  TIFR1 |= (1<<TOV1);
 }
 /*
 ISR (PCINT0_vect){
