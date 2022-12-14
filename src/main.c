@@ -112,10 +112,10 @@ void get_RPM() {
   if (flag == 0) {
     //TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
 
-    RPM = (5 / (0.1 * us + ms + s * 1000)) * 60000; //Get the RPM
+    RPM = (4 / (0.1 * us + ms + s * 1000)) * 60000; //Get the RPM
     SRPM[ptr] = RPM;
     ptr++;
-    if (ptr == 2) {
+    if (ptr > 2) {
       ptr = 0;
     }
     RPM = 0;
@@ -168,7 +168,7 @@ ISR(TIMER1_COMPA_vect) {
 ISR(PCINT2_vect) {
   r++; //1/12 of a rotation
 
-  if (r >= 60) {
+  if (r >= 48) {
     flag = 0;
     r = 0;
   }
