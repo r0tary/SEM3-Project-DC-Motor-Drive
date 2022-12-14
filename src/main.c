@@ -46,7 +46,7 @@ int main(void) {
   short TOP = 255;
   int potmeter, error = 0, previousError = 0, deltaT;
   float integral = 0;
-  float kp = 1, ki = 2.9;
+  float kp = 1, ki = 2.83;
   //Initilization
   uart_init();
   io_redirect();
@@ -64,9 +64,13 @@ int main(void) {
   PORTB |= (1 << PORTB0); //button pullup
   //timer2 init
   TCCR2B = (1 << CS22) | (1 << CS21) | (1 << CS20); //1024 prescaler, >> 15625 Hz, 64us for a tick
-
+	potmeter=0;
   while (1) {
-    potmeter = adc_read(PoMeter);
+    //potmeter = adc_read(PoMeter);
+	if (s>=15)
+	{
+		potmeter = 125;
+	}
     if(potmeter>0.9*TOP) potmeter = 0.9*TOP;
     get_RPM();
     previousError = error;
@@ -78,6 +82,7 @@ int main(void) {
     if (integral <= TOP){
         integral += 0.000064 * deltaT * (error + previousError) / 2;}
     else integral = TOP;
+	
     
     DutyCycle = (int)(kp * error) + (int) ki * integral;
     
@@ -101,7 +106,7 @@ int main(void) {
       TCCR0A |= (1 << COM0B1) | (1 << WGM01) | (1 << WGM00); //Non Inverting Fast PWM
       TCCR0B |= (1 << CS00); //No prescaler
     }
-    printf("%6d, %6d, %6d, %6d, %6d, %f, %d\n", DutyCycle, OCR0B, error, potmeter, RPM, integral, s);
+    printf("%6d, %6d, %6d, %6d, %6d, %f\n", DutyCycle, OCR0B, error, potmeter, RPM, integral);
 
   }
   //return 0;
@@ -178,5 +183,4 @@ ISR (PCINT0_vect){
   //switching the last bit of power_on, if more than one second passed since the last switching. The seconds are stored from 7-1 bits, 
   //the state in the last one; also only changes it if the button is released
   if(((PINB&1)==1) && (s!=(power_on>>1))) power_on = (s<<1)| (power_on^1);
-
 }*/
