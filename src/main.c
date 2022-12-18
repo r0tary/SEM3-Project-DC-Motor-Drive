@@ -4,24 +4,17 @@
  * Created: 26.10.2022.
  * Author : Group 3
  */
-//bahaaaaa
 #define F_CPU 16000000UL
 
 #include <avr/io.h>
-
 #include <util/delay.h>
-
 #include <stdint.h>
-
 #include <avr/interrupt.h>
-
 #include <stdio.h>
 
 //Included header files
 #include "usart.h"
-
 #include "PWM_TIMERS.h"
- //#include "pid.h"
 
 //PIN definitions
 #define PoMeter 3
@@ -37,16 +30,15 @@ uint16_t adc_read(uint8_t adc_channel);
 uint8_t flag = 0, ptr = 0;
 uint16_t RPM = 0, SRPM[3];
 volatile uint16_t r = 0, us = 0, ms = 0, s = 0;
-volatile char power_on = 0;
 int DutyCycle = 0;
 
 int main(void) {
-
   //variables
   short TOP = 255;
   int potmeter, error = 0, previousError = 0, deltaT;
   float integral = 0;
-  float kp = 1, ki = 2.83;
+  float kp = 0.4, ki = 1.99;
+  
   //Initilization
   uart_init();
   io_redirect();
@@ -62,108 +54,91 @@ int main(void) {
   DDRC = 0x00; //input from Potentiometer
   DDRB = 0b00100000; //led_builtin as output
   PORTB |= (1 << PORTB0); //button pullup
-  //timer2 init
+  
   TCCR2B = (1 << CS22) | (1 << CS21) | (1 << CS20); //1024 prescaler, >> 15625 Hz, 64us for a tick
-	potmeter=0;
+  
   while (1) {
-    //potmeter = adc_read(PoMeter);
-	if (s>=15)
-	{
-		potmeter = 125;
-	}
-    if(potmeter>0.9*TOP) potmeter = 0.9*TOP;
-    get_RPM();
+    potmeter = adc_read(PoMeter);//reads Potmeter reading
+    
+    if(potmeter>0.9*TOP) potmeter = 0.9*TOP;//Limit POT to below 90%
+    
+    get_RPM();//get RPM measurement 
     previousError = error;
-    deltaT = TCNT2;
+    deltaT = TCNT2;//get time difference between two errors for integration
     TCNT2 = 0;
-    //if(potmeter > 0.9*TOP)potmeter = 0.9*TOP;
-    error = potmeter - (RPM / 14);
+    error = potmeter - (RPM / 14);//calculate error
 
+    //Calculating the integral of the error
     if (integral <= TOP){
-        integral += 0.000064 * deltaT * (error + previousError) / 2;}
+      integral += 0.000064 * deltaT * (error + previousError) / 2;}
     else integral = TOP;
 	
-    
-    DutyCycle = (int)(kp * error) + (int) ki * integral;
-    
-    if (DutyCycle < 0) DutyCycle = 0;
-    if (DutyCycle > 255) DutyCycle = 255;
-    //DutyCycle = 30;p
-    //OCR0B = 30;
+    //Calaculate the correct DutyCycle needed
+    DutyCycle = (int)(kp * error) + (int)ki * integral;
 
-    if ((DutyCycle != OCR0B)) { //update dutycycle in pwm register
-
+    //Update duty cycle in register
+    if ((DutyCycle != OCR0B)){
+      //Limit Duty Cycle/PWM between 10% and 90% 
       if ((DutyCycle <= TOP * 0.9) && (DutyCycle >= TOP * 0.1)) {
         OCR0B = DutyCycle;
       }
-      else if (DutyCycle > TOP * 0.9) { //avoiding 100% dutycycle to let bootstrap capacitor charge
+      else if (DutyCycle > TOP * 0.9) {//avoiding 100% dutycycle to let bootstrap capacitor charge
         OCR0B = TOP * 0.9;
       }
-      else if (DutyCycle < 0.1 * TOP) { //turning off the motor
+      else if (DutyCycle < 0.1 * TOP) {//turning off the motor
         OCR0B = 0;
       }
-
+      
+      //Reset PWM registers after updating OCR0B
       TCCR0A |= (1 << COM0B1) | (1 << WGM01) | (1 << WGM00); //Non Inverting Fast PWM
       TCCR0B |= (1 << CS00); //No prescaler
     }
     printf("%6d, %6d, %6d, %6d, %6d, %f\n", DutyCycle, OCR0B, error, potmeter, RPM, integral);
-
   }
-  //return 0;
 }
 
 void get_RPM() {
 
   if (flag == 0) {
-    //TCCR1B |= (0 << CS12) | (0 << CS11) | (0 << CS10);//Stop timer
-
     RPM = (4 / (0.1 * us + ms + s * 1000)) * 60000; //Get the RPM
-    SRPM[ptr] = RPM;
-    ptr++;
+    SRPM[ptr] = RPM;//Add the current RPM calculation to the SRPM array for smoothing
+    
+    ptr++;//Keep count of where in the array we are
     if (ptr > 2) {
       ptr = 0;
     }
-    RPM = 0;
-    for (int i = 0; i < 3; i++) { //sum up the time for one rotation
+
+    RPM = 0;//Set the current RPM to 0 since it has to be replaced with the smoothed RPM
+    
+    for (int i = 0; i < 3; i++) { //sum up the RPM for 3 measurements
       RPM += SRPM[i];
     }
-    RPM = RPM / 3;
-    us = 0;
-    ms = 0;
-    s = 0;
+    
+    RPM = RPM / 3; //Take the average time of the previous 3 measurements
+
+    us = ms = s = 0; //Reset the timer
 
     TCCR1B |= (0 << CS12) | (0 << CS11) | (1 << CS10); //Start timer with prescaler 1
 
-    flag = 1;
+    flag = 1; //Set flag to 1 and wait for the next rotation
   }
 
+  //Had a problem where the RPM did not properly reset
   if (s >= 2) {
     RPM = 0;
   }
-  //print_String("    ",0,3);
-
-}
-uint16_t adc_read(uint8_t adc_channel) {
-  ADMUX &= 0xf0; //clear any previously used channel, but keep internal reference
-  ADMUX |= adc_channel; //set the desired channel
-  //start a conversion
-  ADCSRA |= (1 << ADSC);
-
-  //now wait for the conversion to complete
-  while ((ADCSRA & (1 << ADSC)));
-
-  //now we have the result, so we return it to the calling function as a 16 bit unsigned int
-  return (int)(0.25 * ADC);
 }
 
 ISR(TIMER1_COMPA_vect) {
-  us++;
+  us++; //Add a tenth of a millisecond to the us register
 
-  if (us >= 10) {
+  //Add a millisecond to ms counter if 10 us is counted
+  if (us >= 10) { 
     us = 0;
     ms++;
   }
 
+  //Add a second to the s counter if the ms counter is 1000
   if (ms >= 1000) {
     ms = 0;
     s++;
@@ -173,14 +148,9 @@ ISR(TIMER1_COMPA_vect) {
 ISR(PCINT2_vect) {
   r++; //1/12 of a rotation
 
+  //Set the flag to 0 to start calculation in the get_RPM function every 4th rotation
   if (r >= 48) {
     flag = 0;
     r = 0;
   }
 }
-/*
-ISR (PCINT0_vect){
-  //switching the last bit of power_on, if more than one second passed since the last switching. The seconds are stored from 7-1 bits, 
-  //the state in the last one; also only changes it if the button is released
-  if(((PINB&1)==1) && (s!=(power_on>>1))) power_on = (s<<1)| (power_on^1);
-}*/
